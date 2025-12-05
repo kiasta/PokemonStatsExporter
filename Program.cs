@@ -1,11 +1,13 @@
 ﻿using HtmlAgilityPack;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace PokemonStatsExporter
 {
@@ -135,6 +137,48 @@ namespace PokemonStatsExporter
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("static const BaseStats BASE_STATS_TABLE[] = {");
 
+            var addedDeoxys = false;
+            bool addedBurmy = false;
+            bool addedWormadam = false;
+            bool addedGiratina = false;
+            bool addedShaymin = false;
+            bool addedBasculin = false;
+            bool addedDarmanitan = false;
+            bool addedTornadus = false;
+            bool addedThundurus = false;
+            bool addedLandorus = false;
+            bool addedKeldeo = false;
+            bool addedMeloetta = false;
+            bool addedMeowstic = false;
+            bool addedAegislash = false;
+            bool addedPumpkaboo = false;
+            bool addedGourgeist = false;
+            bool addedZygarde = false;
+            bool addedHoopa = false;
+            bool addedOricorio = false;
+            bool addedLycanroc = false;
+            bool addedWishiwashi = false;
+            bool addedMinior = false;
+            bool addedToxtricity = false;
+            bool addedEiscue = false;
+            bool addedIndeedee = false;
+            bool addedMorpeko = false;
+            bool addedZacian = false;
+            bool addedZamazenta = false;
+            bool addedUrshifu = false;
+            bool addedCalyrex = false;
+            bool addedBasculegion = false;
+            bool addedEnamorus = false;
+            bool addedOinkologne = false;
+            bool addedMaushold = false;
+            bool addedSquawkabilly = false;
+            bool addedPalafin = false;
+            bool addedTatsugiri = false;
+            bool addedDudunsparce = false;
+            bool addedGimmighoul = false;
+            bool addedOgerpon = false;
+            bool addedTerapagos = false;
+
             for (int i = 0; i < pokemonList.Count; i++)
             {
                 var pokemon = pokemonList[i];
@@ -203,19 +247,13 @@ namespace PokemonStatsExporter
                     && !pokemon.Name.Contains("Confined")
                     && !pokemon.Name.Contains("Unbound")
                     // Oricorio Forms
-                    && !pokemon.Name.Contains("Baile Style")
-                    && !pokemon.Name.Contains("Pom-Pom Style")
-                    && !pokemon.Name.Contains("Pa'u Style")
-                    && !pokemon.Name.Contains("Sensu Style")
+                    && !pokemon.Name.Contains("Oricorio")
                     // Rockruff Forms
                     && !pokemon.Name.Contains("Own Tempo")
                     // Lycanroc Forms
-                    && !pokemon.Name.Contains("Midday Form")
-                    && !pokemon.Name.Contains("Midnight Form")
-                    && !pokemon.Name.Contains("Dusk Form")
+                    && !pokemon.Name.Contains("Lycanroc")
                     // Wishiwashi Forms
-                    && !pokemon.Name.Contains("Solo Form")
-                    && !pokemon.Name.Contains("School Form")
+                    && !pokemon.Name.Contains("Wishiwashi")
                     // Minior Forms
                     && !pokemon.Name.Contains("Meteor Form")
                     && !pokemon.Name.Contains("Core Form")
@@ -224,17 +262,13 @@ namespace PokemonStatsExporter
                     && !pokemon.Name.Contains("Dawn Wings")
                     && !pokemon.Name.Contains("Ultra Necrozma")
                     // Toxtricity Forms
-                    && !pokemon.Name.Contains("Amped Form")
-                    && !pokemon.Name.Contains("Low Key Form")
+                    && !pokemon.Name.Contains("Toxtricity")
                     // Eiscue Forms
-                    && !pokemon.Name.Contains("Ice Face")
-                    && !pokemon.Name.Contains("Noice Face")
+                    && !pokemon.Name.Contains("Eiscue")
                     // Indeedee Forms
-                    && !pokemon.Name.Contains("Indeedee Male")
-                    && !pokemon.Name.Contains("Indeedee Female")
+                    && !pokemon.Name.Contains("Indeedee")
                     // Morpeko Forms
-                    && !pokemon.Name.Contains("Full Belly Mode")
-                    && !pokemon.Name.Contains("Hangry Mode")
+                    && !pokemon.Name.Contains("Morpeko")
                     // Zacian/Zamazenta Forms
                     && !pokemon.Name.Contains("Hero of Many Battles")
                     // Zacian Forms
@@ -244,52 +278,33 @@ namespace PokemonStatsExporter
                     // Eternatus Forms
                     && !pokemon.Name.Contains("Eternamax")
                     // Urshifu Forms
-                    && !pokemon.Name.Contains("Single Strike Style")
-                    && !pokemon.Name.Contains("Rapid Strike Style")
+                    && !pokemon.Name.Contains("Urshifu")
                     // Calyrex Forms
-                    && !pokemon.Name.Contains("Ice Rider")
-                    && !pokemon.Name.Contains("Shadow Rider")
+                    && !pokemon.Name.Contains("Calyrex")
                     //Ursaluna Forms
                     && !pokemon.Name.Contains("Bloodmoon")
                     // Basculegion Forms
-                    && !pokemon.Name.Contains("Basculegion Male")
-                    && !pokemon.Name.Contains("Basculegion Female")
+                    && !pokemon.Name.Contains("Basculegion")
                     // Enamorus Forms
-                    && !pokemon.Name.Contains("Incarnate Forme")
-                    && !pokemon.Name.Contains("Therian Forme")
+                    && !pokemon.Name.Contains("Enamorus")
                     // Oinkologne Forms
-                    && !pokemon.Name.Contains("Oinkologne Male")
-                    && !pokemon.Name.Contains("Oinkologne Female")
+                    && !pokemon.Name.Contains("Oinkologne")
                     // Maushold Forms
-                    && !pokemon.Name.Contains("Family of Three")
-                    && !pokemon.Name.Contains("Family of Four")
+                    && !pokemon.Name.Contains("Maushold")
                     // Squawkabilly Forms
-                    && !pokemon.Name.Contains("Green Plumage")
-                    && !pokemon.Name.Contains("Blue Plumage")
-                    && !pokemon.Name.Contains("Yellow Plumage")
-                    && !pokemon.Name.Contains("White Plumage")
+                    && !pokemon.Name.Contains("Squawkabilly")
                     // Palafin Forms
-                    && !pokemon.Name.Contains("Zero Form")
-                    && !pokemon.Name.Contains("Hero Form")
+                    && !pokemon.Name.Contains("Palafin")
                     // Tatsugiri Forms
-                    && !pokemon.Name.Contains("Curly Form")
-                    && !pokemon.Name.Contains("Droopy Form")
-                    && !pokemon.Name.Contains("Stretchy Form")
+                    && !pokemon.Name.Contains("Tatsugiri")
                     // Dudunsparce Forms
-                    && !pokemon.Name.Contains("Two-Segment Form")
-                    && !pokemon.Name.Contains("Three-Segment Form")
+                    && !pokemon.Name.Contains("Dudunsparce")
                     // Gimmighoul Forms
-                    && !pokemon.Name.Contains("Chest Form")
-                    && !pokemon.Name.Contains("Roaming Form")
+                    && !pokemon.Name.Contains("Gimmighoul")
                     // Ogerpon Forms
-                    && !pokemon.Name.Contains("Teal Mask")
-                    && !pokemon.Name.Contains("Wellspring Mask")
-                    && !pokemon.Name.Contains("Hearthflame Mask")
-                    && !pokemon.Name.Contains("Cornerstone Mask")
+                    && !pokemon.Name.Contains("Ogerpon")
                     // Terapagos Forms
-                    && !pokemon.Name.Contains("Normal Form")
-                    && !pokemon.Name.Contains("Terastal Form")
-                    && !pokemon.Name.Contains("Stellar Form")
+                    && !pokemon.Name.Contains("Terapagos")
                 )
                 {
                     var stats = pokemon.Stats;
@@ -298,6 +313,215 @@ namespace PokemonStatsExporter
                         : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
+                }
+                // To reduce the performance requirement to find a pokemon with this array, we'll just create an empty element so we can lookup by pokedex entry later
+                // If we need to find, say, Charizard, we just do BASE_STATS_TABLE[6] (since Charizard is #6) and get its stats directly, instead of creating a for loop to find it
+                else if (pokemon.Name.Contains("Deoxys") && !addedDeoxys)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Deoxys Empty");
+                    addedDeoxys = true;
+                }
+                else if (pokemon.Name.Contains("Burmy") && !addedBurmy)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Burmy Empty");
+                    addedBurmy = true;
+                }
+                else if (pokemon.Name.Contains("Wormadam") && !addedWormadam)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Wormadam Empty");
+                    addedWormadam = true;
+
+                }
+                else if (pokemon.Name.Contains("Giratina") && !addedGiratina)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Giratina Empty");
+                    addedGiratina = true;
+                }
+                else if (pokemon.Name.Contains("Shaymin") && !addedShaymin)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Shaymin Empty");
+                    addedShaymin = true;
+                }
+                else if (pokemon.Name.Contains("Basculin") && !addedBasculin)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Basculin Empty");
+                    addedBasculin = true;
+                }
+                else if (pokemon.Name.Contains("Darmanitan") && !addedDarmanitan)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Darmanitan Empty");
+                    addedDarmanitan = true;
+                }
+                else if (pokemon.Name.Contains("Tornadus") && !addedTornadus)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Tornadus Empty");
+                    addedTornadus = true;
+                }
+                else if (pokemon.Name.Contains("Thundurus") && !addedThundurus)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Thundurus Empty");
+                    addedThundurus = true;
+                }
+                else if (pokemon.Name.Contains("Landorus") && !addedLandorus)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Landorus Empty");
+                    addedLandorus = true;
+                }
+                else if (pokemon.Name.Contains("Keldeo") && !addedKeldeo)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Keldeo Empty");
+                    addedKeldeo = true;
+                }
+                else if (pokemon.Name.Contains("Meloetta") && !addedMeloetta)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Meloetta Empty");
+                    addedMeloetta = true;
+                }
+                else if (pokemon.Name.Contains("Meowstic") && !addedMeowstic)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Meowstic Empty");
+                    addedMeowstic = true;
+                }
+                else if (pokemon.Name.Contains("Aegislash") && !addedAegislash)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Aegislash Empty");
+                    addedAegislash = true;
+                }
+                else if (pokemon.Name.Contains("Pumpkaboo") && !addedPumpkaboo)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Pumpkaboo Empty");
+                    addedPumpkaboo = true;
+                }
+                else if (pokemon.Name.Contains("Gourgeist") && !addedGourgeist)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Gourgeist Empty");
+                    addedGourgeist = true;
+                }
+                else if (pokemon.Name.Contains("Zygarde") && !addedZygarde)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Zygarde Empty");
+                    addedZygarde = true;
+                }
+                else if (pokemon.Name.Contains("Hoopa") && !addedHoopa)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Hoopa Empty");
+                    addedHoopa = true;
+                }
+                else if (pokemon.Name.Contains("Oricorio") && !addedOricorio)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Oricorio Empty");
+                    addedOricorio = true;
+                }
+                else if (pokemon.Name.Contains("Lycanroc") && !addedLycanroc)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Lycanroc Empty");
+                    addedLycanroc = true;
+                }
+                else if (pokemon.Name.Contains("Wishiwashi") && !addedWishiwashi)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Wishiwashi Empty");
+                    addedWishiwashi = true;
+                }
+                else if (pokemon.Name.Contains("Minior") && !addedMinior)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Minior Empty");
+                    addedMinior = true;
+                }
+                else if (pokemon.Name.Contains("Toxtricity") && !addedToxtricity)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Toxtricity Empty");
+                    addedToxtricity = true;
+                }
+                else if (pokemon.Name.Contains("Eiscue") && !addedEiscue)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Eiscue Empty");
+                    addedEiscue = true;
+                }
+                else if (pokemon.Name.Contains("Indeedee") && !addedIndeedee)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Indeedee Empty");
+                    addedIndeedee = true;
+                }
+                else if (pokemon.Name.Contains("Morpeko") && !addedMorpeko)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Morpeko Empty");
+                    addedMorpeko = true;
+                }
+                else if (pokemon.Name.Contains("Zacian") && !addedZacian)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Zacian Empty");
+                    addedZacian = true;
+                }
+                else if (pokemon.Name.Contains("Zamazenta") && !addedZamazenta)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Zamazenta Empty");
+                    addedZamazenta = true;
+                }
+                else if (pokemon.Name.Contains("Urshifu") && !addedUrshifu)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Urshifu Empty");
+                    addedUrshifu = true;
+
+                }
+                else if (pokemon.Name.Contains("Calyrex") && !addedCalyrex)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Calyrex Empty");
+                    addedCalyrex = true;
+                }
+                else if (pokemon.Name.Contains("Basculegion") && !addedBasculegion)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Basculegion Empty");
+                    addedBasculegion = true;
+                }
+                else if (pokemon.Name.Contains("Enamorus") && !addedEnamorus)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Enamorus Empty");
+                    addedEnamorus = true;
+                }
+                else if (pokemon.Name.Contains("Oinkologne") && !addedOinkologne)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Oinkologne Empty");
+                    addedOinkologne = true;
+                }
+                else if (pokemon.Name.Contains("Maushold") && !addedMaushold)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Maushold Empty");
+                    addedMaushold = true;
+                }
+                else if (pokemon.Name.Contains("Squawkabilly") && !addedSquawkabilly)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Squawkabilly Empty");
+                    addedSquawkabilly = true;
+                }
+                else if (pokemon.Name.Contains("Palafin") && !addedPalafin)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Palafin Empty");
+                    addedPalafin = true;
+                }
+                else if (pokemon.Name.Contains("Tatsugiri") && !addedTatsugiri)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Tatsugiri Empty");
+                    addedTatsugiri = true;
+                }
+                else if (pokemon.Name.Contains("Dudunsparce") && !addedDudunsparce)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Dudunsparce Empty");
+                    addedDudunsparce = true;
+                }
+                else if (pokemon.Name.Contains("Gimmighoul") && !addedGimmighoul)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Gimmighoul Empty");
+                    addedGimmighoul = true;
+                }
+                else if (pokemon.Name.Contains("Ogerpon") && !addedOgerpon)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Ogerpon Empty");
+                    addedOgerpon = true;
+                }
+                else if (pokemon.Name.Contains("Terapagos") && !addedTerapagos)
+                {
+                    stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, 0, 0, 0, 0, 0, 0 }}, // Terapagos Empty");
+                    addedTerapagos = true;
                 }
             }
             stringBuilder.AppendLine("};");
