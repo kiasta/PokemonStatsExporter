@@ -1,13 +1,5 @@
 ﻿using HtmlAgilityPack;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace PokemonStatsExporter
 {
@@ -26,6 +18,7 @@ namespace PokemonStatsExporter
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public BaseStats Stats { get; set; } = new BaseStats();
+        public List<string> Types { get; set; } = new List<string>();
     }
 
     class Program
@@ -47,6 +40,11 @@ namespace PokemonStatsExporter
 
                 Console.WriteLine("Generating C++ array with names...");
                 string cppArray = GenerateCppArrayWithNames(pokemonList);
+
+                Console.WriteLine("Generating C++ array with types...");
+                string cppTypesArray = GenerateCppArrayWithTypes(pokemonList);
+
+                cppArray += cppTypesArray;
 
                 await File.WriteAllTextAsync(outputPath, cppArray, Encoding.UTF8);
 
@@ -80,7 +78,7 @@ namespace PokemonStatsExporter
             var result = new List<PokemonEntry>();
 
             // Index 0 = placeholder
-            result.Add(new PokemonEntry { Id = 0, Name = "(placeholder)", Stats = new BaseStats() });
+            result.Add(new PokemonEntry { Id = 0, Name = "(placeholder)", Stats = new BaseStats(), Types = new List<string>() { "None", "None" } });
 
             foreach (var row in rows)
             {
@@ -96,6 +94,29 @@ namespace PokemonStatsExporter
                 string formText = cells[1].SelectSingleNode(".//small")?.InnerText.Trim();
                 string name = string.IsNullOrEmpty(formText) ? fullName : $"{fullName} {formText}";
 
+                // Column 2: Type(s)
+                var typeTextHTMLList = cells[2].SelectNodes(".//a").ToList() ?? new List<HtmlNode>();
+                List<string> typeTextList = new List<string>();
+
+
+                for(var i = 0; i < typeTextHTMLList.Count; i++)
+                {
+                    typeTextList.Add(typeTextHTMLList[i].InnerText?.Trim() ?? "None");
+                }
+
+                // If the pokemon only has 1 type
+                if (typeTextList.Count > 0 && typeTextList.Count < 2)
+                {
+                    typeTextList.Add("None");
+                }
+
+                // For some reason if there are empty rows?
+                else if (typeTextList.Count <= 0)
+                {
+                    typeTextList.Add("None");
+                    typeTextList.Add("None");
+                }
+
                 // Stats (columns 4–9)
                 if (!byte.TryParse(CleanText(cells[4].InnerText), out byte hp)) continue;
                 if (!byte.TryParse(CleanText(cells[5].InnerText), out byte atk)) continue;
@@ -108,7 +129,8 @@ namespace PokemonStatsExporter
                 {
                     Id = natId,
                     Name = CleanPokemonName(name),
-                    Stats = new BaseStats { Hp = hp, Atk = atk, Def = def, SpA = spa, SpD = spd, Spe = spe }
+                    Stats = new BaseStats { Hp = hp, Atk = atk, Def = def, SpA = spa, SpD = spd, Spe = spe },
+                    Types = typeTextList
                 });
             }
 
@@ -137,7 +159,7 @@ namespace PokemonStatsExporter
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("static const BaseStats BASE_STATS_TABLE[] = {");
 
-            var addedDeoxys = false;
+            bool addedDeoxys = false;
             bool addedBurmy = false;
             bool addedWormadam = false;
             bool addedGiratina = false;
@@ -536,9 +558,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Mega "))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} Mega {pokemon.Name.Split("Mega")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} Mega {pokemon.Name.Split("Mega")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -555,9 +575,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Alolan"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Alolan")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Alolan")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -578,9 +596,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Galarian")[0].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Galarian")[0].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -597,9 +613,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Hisuian"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Hisuian")[0].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Hisuian")[0].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -616,9 +630,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Paldean"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Paldean")[0].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Paldean")[0].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -638,9 +650,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Replace("Tauros ", "").Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Replace("Tauros ", "").Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -657,9 +667,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Partner"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Partner")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Partner")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -679,9 +687,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Replace("Castform ", "").Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Replace("Castform ", "").Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -698,9 +704,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Primal"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} Primal {pokemon.Name.Split("Primal")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} Primal {pokemon.Name.Split("Primal")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -717,9 +721,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Deoxys"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Deoxys")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Deoxys")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -738,9 +740,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -762,9 +762,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Rotom")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Rotom")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -784,9 +782,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -803,9 +799,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Shaymin"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Shaymin")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Shaymin")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -822,9 +816,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Basculin"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Basculin")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Basculin")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -842,9 +834,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Darmanitan")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Darmanitan")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -864,9 +854,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -888,9 +876,7 @@ namespace PokemonStatsExporter
                     if (pokemon.Name.Contains("Black")) { nameText = "Black Kyurem"; }
                     else if (pokemon.Name.Contains("White")) { nameText = "White Kyurem"; }
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {nameText}";
+                    var comment = $"  // {pokemon.Id} {nameText}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -907,9 +893,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Keldeo"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Keldeo")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Keldeo")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -926,9 +910,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Meloetta"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Meloetta")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Meloetta")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -945,9 +927,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Ash-Greninja"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} Ash-Greninja";
+                    var comment = $"  // {pokemon.Id} Ash-Greninja";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -964,9 +944,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Meowstic"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Meowstic")[1]}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Meowstic")[1]}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -983,9 +961,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Aegislash"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Aegislash")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Aegislash")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1004,9 +980,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1023,9 +997,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Zygarde"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Zygarde")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Zygarde")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1042,9 +1014,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Hoopa"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {"Hoopa " + pokemon.Name.Split("Hoopa")[2].Trim()}";
+                    var comment = $"  // {pokemon.Id} {"Hoopa " + pokemon.Name.Split("Hoopa")[2].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1061,9 +1031,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Oricorio"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Oricorio")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Oricorio")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1080,9 +1048,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Own Tempo"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Rockruff")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Rockruff")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1099,9 +1065,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Lycanroc"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Lycanroc")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Lycanroc")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1118,9 +1082,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Wishiwashi"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Wishiwashi")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Wishiwashi")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1137,9 +1099,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Minior"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Minior")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Minior")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1159,9 +1119,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Necrozma")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Necrozma")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1178,9 +1136,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Toxtricity"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Toxtricity")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Toxtricity")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1197,9 +1153,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Eiscue"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Eiscue")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Eiscue")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1216,9 +1170,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Indeedee"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Indeedee")[1]}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Indeedee")[1]}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1235,9 +1187,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Morpeko"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Morpeko")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Morpeko")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1259,9 +1209,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1278,9 +1226,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Eternamax"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Eternatus")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Eternatus")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1297,9 +1243,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Urshifu"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Urshifu")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Urshifu")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1318,9 +1262,7 @@ namespace PokemonStatsExporter
                 )
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Calyrex")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Calyrex")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1337,9 +1279,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Bloodmoon"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Ursaluna")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Ursaluna")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1356,9 +1296,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Basculegion"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Basculegion")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Basculegion")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1375,9 +1313,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Enamorus"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Enamorus")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Enamorus")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1394,9 +1330,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Oinkologne"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Oinkologne")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Oinkologne")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1413,9 +1347,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Maushold"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Maushold")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Maushold")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1432,9 +1364,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Squawkabilly"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Squawkabilly")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Squawkabilly")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1451,9 +1381,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Palafin"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Palafin")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Palafin")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1470,9 +1398,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Tatsugiri"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Tatsugiri")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Tatsugiri")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1489,9 +1415,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Dudunsparce"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Dudunsparce")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Dudunsparce")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1508,9 +1432,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Gimmighoul"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Gimmighoul")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Gimmighoul")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1527,9 +1449,7 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Ogerpon"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Ogerpon")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Ogerpon")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
@@ -1546,13 +1466,539 @@ namespace PokemonStatsExporter
                 if (pokemon.Name.Contains("Terapagos"))
                 {
                     var stats = pokemon.Stats;
-                    var comment = pokemon.Id == 0
-                        ? "  // 0 (placeholder)"
-                        : $"  // {pokemon.Id} {pokemon.Name.Split("Terapagos")[1].Trim()}";
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Split("Terapagos")[1].Trim()}";
 
                     stringBuilder.AppendLine($"    {{ {pokemon.Id,3}, {stats.Hp,3}, {stats.Atk,3}, {stats.Def,3}, {stats.SpA,3}, {stats.SpD,3}, {stats.Spe,3} }},{comment}");
                 }
             }
+            stringBuilder.AppendLine("};");
+
+            return stringBuilder.ToString();
+        }
+
+        static string GenerateCppArrayWithTypes(List<PokemonEntry> pokemonList)
+        {
+            var stringBuilder = new StringBuilder();
+
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine("// Pokemon Base Types Table (National Dex #1 - #1025)");
+            stringBuilder.AppendLine("// Generated from https://pokemondb.net/pokedex/all");
+            stringBuilder.AppendLine("// Format: {TYPE1, TYPE2}, // ID Name");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine("static const TypePair BASE_TYPES[] = {");
+
+            bool addedDeoxys = false;
+            bool addedBurmy = false;
+            bool addedWormadam = false;
+            bool addedGiratina = false;
+            bool addedShaymin = false;
+            bool addedBasculin = false;
+            bool addedDarmanitan = false;
+            bool addedTornadus = false;
+            bool addedThundurus = false;
+            bool addedLandorus = false;
+            bool addedKeldeo = false;
+            bool addedMeloetta = false;
+            bool addedMeowstic = false;
+            bool addedAegislash = false;
+            bool addedPumpkaboo = false;
+            bool addedGourgeist = false;
+            bool addedZygarde = false;
+            bool addedHoopa = false;
+            bool addedOricorio = false;
+            bool addedLycanroc = false;
+            bool addedWishiwashi = false;
+            bool addedMinior = false;
+            bool addedToxtricity = false;
+            bool addedEiscue = false;
+            bool addedIndeedee = false;
+            bool addedMorpeko = false;
+            bool addedZacian = false;
+            bool addedZamazenta = false;
+            bool addedUrshifu = false;
+            bool addedCalyrex = false;
+            bool addedBasculegion = false;
+            bool addedEnamorus = false;
+            bool addedOinkologne = false;
+            bool addedMaushold = false;
+            bool addedSquawkabilly = false;
+            bool addedPalafin = false;
+            bool addedTatsugiri = false;
+            bool addedDudunsparce = false;
+            bool addedGimmighoul = false;
+            bool addedOgerpon = false;
+            bool addedTerapagos = false;
+
+            for (int i = 0; i < pokemonList.Count; i++)
+            {
+                var pokemon = pokemonList[i];
+                // We ignore alternate forms and make separate lists
+                if (!pokemon.Name.Contains("Mega ")
+                    && !pokemon.Name.Contains("Alolan")
+                    && !pokemon.Name.Contains("Galarian")
+                    && !pokemon.Name.Contains("Hisuian")
+                    && !pokemon.Name.Contains("Paldean")
+                    // Tauros Forms
+                    && !pokemon.Name.Contains("Combat Breed")
+                    && !pokemon.Name.Contains("Blaze Breed")
+                    && !pokemon.Name.Contains("Aqua Breed")
+                    // Let's Go Pikachu/Eevee
+                    && !pokemon.Name.Contains("Partner")
+                    // Castform Forms
+                    && !pokemon.Name.Contains("Sunny Form")
+                    && !pokemon.Name.Contains("Rainy Form")
+                    && !pokemon.Name.Contains("Snowy Form")
+                    // Primal Forms (Kyogre and Groudon)
+                    && !pokemon.Name.Contains("Primal")
+                    // Deoxys Forms
+                    && !pokemon.Name.Contains("Deoxys")
+                    // Burmy/Wormadam Forms
+                    && !pokemon.Name.Contains("Burmy")
+                    && !pokemon.Name.Contains("Wormadam")
+                    // Rotom Forms
+                    && !pokemon.Name.Contains("Heat Rotom")
+                    && !pokemon.Name.Contains("Wash Rotom")
+                    && !pokemon.Name.Contains("Frost Rotom")
+                    && !pokemon.Name.Contains("Fan Rotom")
+                    && !pokemon.Name.Contains("Mow Rotom")
+                    // Dialga/Palkia/Giratina Forms
+                    && !pokemon.Name.Contains("Origin Forme")
+                    // Giratina Form
+                    && !pokemon.Name.Contains("Altered Forme")
+                    // Shaymin Forms
+                    && !pokemon.Name.Contains("Shaymin")
+                    // Basculin Forms
+                    && !pokemon.Name.Contains("Basculin")
+                    // Darmanitan Forms
+                    && !pokemon.Name.Contains("Darmanitan")
+                    // Tornadus/Thundurus/Landorus Forms
+                    && !pokemon.Name.Contains("Tornadus")
+                    && !pokemon.Name.Contains("Thundurus")
+                    && !pokemon.Name.Contains("Landorus")
+                    // Kyurem Forms
+                    && !pokemon.Name.Contains("Black Kyurem")
+                    && !pokemon.Name.Contains("White Kyurem")
+                    // Keldeo Forms
+                    && !pokemon.Name.Contains("Keldeo")
+                    // Meloetta Forms
+                    && !pokemon.Name.Contains("Meloetta")
+                    // Greninja Forms
+                    && !pokemon.Name.Contains("Ash-Greninja")
+                    // Meowstic Forms
+                    && !pokemon.Name.Contains("Meowstic")
+                    // Aegislash Forms
+                    && !pokemon.Name.Contains("Aegislash")
+                    // Pumpkaboo/Gourgeist Forms
+                    && !pokemon.Name.Contains("Pumpkaboo")
+                    && !pokemon.Name.Contains("Gourgeist")
+                    // Zygarde Forms
+                    && !pokemon.Name.Contains("Zygarde")
+                    // Hoopa Forms
+                    && !pokemon.Name.Contains("Confined")
+                    && !pokemon.Name.Contains("Unbound")
+                    // Oricorio Forms
+                    && !pokemon.Name.Contains("Oricorio")
+                    // Rockruff Forms
+                    && !pokemon.Name.Contains("Own Tempo")
+                    // Lycanroc Forms
+                    && !pokemon.Name.Contains("Lycanroc")
+                    // Wishiwashi Forms
+                    && !pokemon.Name.Contains("Wishiwashi")
+                    // Minior Forms
+                    && !pokemon.Name.Contains("Meteor Form")
+                    && !pokemon.Name.Contains("Core Form")
+                    // Necrozma Forms
+                    && !pokemon.Name.Contains("Dusk Mane")
+                    && !pokemon.Name.Contains("Dawn Wings")
+                    && !pokemon.Name.Contains("Ultra Necrozma")
+                    // Toxtricity Forms
+                    && !pokemon.Name.Contains("Toxtricity")
+                    // Eiscue Forms
+                    && !pokemon.Name.Contains("Eiscue")
+                    // Indeedee Forms
+                    && !pokemon.Name.Contains("Indeedee")
+                    // Morpeko Forms
+                    && !pokemon.Name.Contains("Morpeko")
+                    // Zacian/Zamazenta Forms
+                    && !pokemon.Name.Contains("Hero of Many Battles")
+                    // Zacian Forms
+                    && !pokemon.Name.Contains("Crowned Sword")
+                    // Zamazenta Forms
+                    && !pokemon.Name.Contains("Crowned Shield")
+                    // Eternatus Forms
+                    && !pokemon.Name.Contains("Eternamax")
+                    // Urshifu Forms
+                    && !pokemon.Name.Contains("Urshifu")
+                    // Calyrex Forms
+                    && !pokemon.Name.Contains("Calyrex")
+                    //Ursaluna Forms
+                    && !pokemon.Name.Contains("Bloodmoon")
+                    // Basculegion Forms
+                    && !pokemon.Name.Contains("Basculegion")
+                    // Enamorus Forms
+                    && !pokemon.Name.Contains("Enamorus")
+                    // Oinkologne Forms
+                    && !pokemon.Name.Contains("Oinkologne")
+                    // Maushold Forms
+                    && !pokemon.Name.Contains("Maushold")
+                    // Squawkabilly Forms
+                    && !pokemon.Name.Contains("Squawkabilly")
+                    // Palafin Forms
+                    && !pokemon.Name.Contains("Palafin")
+                    // Tatsugiri Forms
+                    && !pokemon.Name.Contains("Tatsugiri")
+                    // Dudunsparce Forms
+                    && !pokemon.Name.Contains("Dudunsparce")
+                    // Gimmighoul Forms
+                    && !pokemon.Name.Contains("Gimmighoul")
+                    // Ogerpon Forms
+                    && !pokemon.Name.Contains("Ogerpon")
+                    // Terapagos Forms
+                    && !pokemon.Name.Contains("Terapagos")
+                )
+                {
+                    var types = pokemon.Types;
+                    var comment = pokemon.Id == 0
+                        ? "  // 0 (placeholder)"
+                        : $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                   stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                }
+                // To reduce the performance requirement to find a pokemon with this array, we'll just create an empty element so we can lookup by pokedex entry later
+                // If we need to find, say, Charizard, we just do BASE_STATS_TABLE[6] (since Charizard is #6) and get its stats directly, instead of creating a for loop to find it
+                else if (pokemon.Name.Contains("Deoxys") && !addedDeoxys)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedDeoxys = true;
+                }
+                else if (pokemon.Name.Contains("Burmy") && !addedBurmy)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedBurmy = true;
+                }
+                else if (pokemon.Name.Contains("Wormadam") && !addedWormadam)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedWormadam = true;
+
+                }
+                else if (pokemon.Name.Contains("Giratina") && !addedGiratina)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedGiratina = true;
+                }
+                else if (pokemon.Name.Contains("Shaymin") && !addedShaymin)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedShaymin = true;
+                }
+                else if (pokemon.Name.Contains("Basculin") && !addedBasculin)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedBasculin = true;
+                }
+                else if (pokemon.Name.Contains("Darmanitan") && !addedDarmanitan)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedDarmanitan = true;
+                }
+                else if (pokemon.Name.Contains("Tornadus") && !addedTornadus)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedTornadus = true;
+                }
+                else if (pokemon.Name.Contains("Thundurus") && !addedThundurus)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedThundurus = true;
+                }
+                else if (pokemon.Name.Contains("Landorus") && !addedLandorus)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedLandorus = true;
+                }
+                else if (pokemon.Name.Contains("Keldeo") && !addedKeldeo)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedKeldeo = true;
+                }
+                else if (pokemon.Name.Contains("Meloetta") && !addedMeloetta)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedMeloetta = true;
+                }
+                else if (pokemon.Name.Contains("Meowstic") && !addedMeowstic)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedMeowstic = true;
+                }
+                else if (pokemon.Name.Contains("Aegislash") && !addedAegislash)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedAegislash = true;
+                }
+                else if (pokemon.Name.Contains("Pumpkaboo") && !addedPumpkaboo)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedPumpkaboo = true;
+                }
+                else if (pokemon.Name.Contains("Gourgeist") && !addedGourgeist)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedGourgeist = true;
+                }
+                else if (pokemon.Name.Contains("Zygarde") && !addedZygarde)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedZygarde = true;
+                }
+                else if (pokemon.Name.Contains("Hoopa") && !addedHoopa)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedHoopa = true;
+                }
+                else if (pokemon.Name.Contains("Oricorio") && !addedOricorio)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedOricorio = true;
+                }
+                else if (pokemon.Name.Contains("Lycanroc") && !addedLycanroc)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedLycanroc = true;
+                }
+                else if (pokemon.Name.Contains("Wishiwashi") && !addedWishiwashi)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedWishiwashi = true;
+                }
+                else if (pokemon.Name.Contains("Minior") && !addedMinior)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedMinior = true;
+                }
+                else if (pokemon.Name.Contains("Toxtricity") && !addedToxtricity)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedToxtricity = true;
+                }
+                else if (pokemon.Name.Contains("Eiscue") && !addedEiscue)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedEiscue = true;
+                }
+                else if (pokemon.Name.Contains("Indeedee") && !addedIndeedee)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedIndeedee = true;
+                }
+                else if (pokemon.Name.Contains("Morpeko") && !addedMorpeko)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedMorpeko = true;
+                }
+                else if (pokemon.Name.Contains("Zacian") && !addedZacian)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedZacian = true;
+                }
+                else if (pokemon.Name.Contains("Zamazenta") && !addedZamazenta)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedZamazenta = true;
+                }
+                else if (pokemon.Name.Contains("Urshifu") && !addedUrshifu)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedUrshifu = true;
+
+                }
+                else if (pokemon.Name.Contains("Calyrex") && !addedCalyrex)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedCalyrex = true;
+                }
+                else if (pokemon.Name.Contains("Basculegion") && !addedBasculegion)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedBasculegion = true;
+                }
+                else if (pokemon.Name.Contains("Enamorus") && !addedEnamorus)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedEnamorus = true;
+                }
+                else if (pokemon.Name.Contains("Oinkologne") && !addedOinkologne)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedOinkologne = true;
+                }
+                else if (pokemon.Name.Contains("Maushold") && !addedMaushold)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedMaushold = true;
+                }
+                else if (pokemon.Name.Contains("Squawkabilly") && !addedSquawkabilly)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedSquawkabilly = true;
+                }
+                else if (pokemon.Name.Contains("Palafin") && !addedPalafin)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedPalafin = true;
+                }
+                else if (pokemon.Name.Contains("Tatsugiri") && !addedTatsugiri)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedTatsugiri = true;
+                }
+                else if (pokemon.Name.Contains("Dudunsparce") && !addedDudunsparce)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedDudunsparce = true;
+                }
+                else if (pokemon.Name.Contains("Gimmighoul") && !addedGimmighoul)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedGimmighoul = true;
+                }
+                else if (pokemon.Name.Contains("Ogerpon") && !addedOgerpon)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedOgerpon = true;
+                }
+                else if (pokemon.Name.Contains("Terapagos") && !addedTerapagos)
+                {
+                    var types = pokemon.Types;
+                    var comment = $"  // {pokemon.Id} {pokemon.Name.Trim()}";
+
+                    stringBuilder.AppendLine($"    {{ TYPE_{types[0].ToUpper(),3}, TYPE_{types[1].ToUpper(),3} }},{comment}");
+                    addedTerapagos = true;
+                }
+            }
+
             stringBuilder.AppendLine("};");
 
             return stringBuilder.ToString();
